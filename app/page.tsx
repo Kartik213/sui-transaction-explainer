@@ -1,64 +1,130 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { SuiClient } from "@mysten/sui.js/client";
+import { Loader2, AlertCircle } from "lucide-react";
+
+const client = new SuiClient({ url: "https://fullnode.mainnet.sui.io:443" });
+
+interface TxSummary {
+  sender: string;
+  created: number;
+  mutated: number;
+  transferred: number;
+  gasUsed: number;
+}
 
 export default function Home() {
+  const [digest, setDigest] = useState("");
+  const [txData, setTxData] = useState<TxSummary | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // Debounce input (to avoid excessive RPC calls)
+  useEffect(() => {
+    if (!digest) return;
+    const timeout = setTimeout(() => fetchTransaction(digest), 800);
+    return () => clearTimeout(timeout);
+  }, [digest]);
+
+  async function fetchTransaction(digest: string) {
+    try {
+      setLoading(true);
+      setError("");
+      const tx = await client.getTransactionBlock({
+        digest,
+        options: { showEffects: true, showInput: true, showEvents: true },
+      });
+
+      const summary = summarize(tx);
+      setTxData(summary);
+    } catch (err: any) {
+      setError("Invalid digest or transaction not found.");
+      setTxData(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function summarize(tx: any): TxSummary {
+    const sender = tx.transaction.data.sender;
+    const gasUsed = tx.effects.gasUsed.computationCost;
+    const created = tx.effects.created?.length || 0;
+    const mutated = tx.effects.mutated?.length || 0;
+    const transferred = tx.effects.transferObject?.length || 0;
+
+    return {
+      sender,
+      created,
+      mutated,
+      transferred,
+      gasUsed: Number(gasUsed) / 1e9,
+    };
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 px-4 font-sans dark:bg-black">
+      <main className="flex w-full max-w-3xl flex-col items-center justify-center space-y-6 p-8">
+        {/* Title */}
+        <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
+          🧩 Sui Transaction Explainer
+        </h1>
+        <p className="text-zinc-500 dark:text-zinc-400 text-center">
+          Paste a transaction digest to see what happened on-chain.
+        </p>
+
+        {/* Input box */}
+        <input
+          type="text"
+          value={digest}
+          onChange={(e) => setDigest(e.target.value.trim())}
+          placeholder="Enter Sui transaction digest (e.g. 3HE8N4H6bnvU...)"
+          className="w-full rounded-lg border border-zinc-300 bg-white p-3 text-black shadow-sm placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+
+        {/* Status / Summary */}
+        <div className="w-full min-h-[120px] rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          {loading ? (
+            <div className="flex items-center justify-center text-zinc-500">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Fetching transaction details...
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center text-red-500">
+              <AlertCircle className="mr-2 h-5 w-5" /> {error}
+            </div>
+          ) : txData ? (
+            <div className="space-y-2">
+              <p className="font-medium text-zinc-800 dark:text-zinc-200">
+                Sender:{" "}
+                <span className="text-blue-600 dark:text-blue-400">
+                  {txData.sender}
+                </span>
+              </p>
+              <p className="text-zinc-700 dark:text-zinc-300">
+                🪙 {txData.created} new objects created
+              </p>
+              <p className="text-zinc-700 dark:text-zinc-300">
+                🔁 {txData.mutated} objects mutated
+              </p>
+              <p className="text-zinc-700 dark:text-zinc-300">
+                📦 {txData.transferred} objects transferred
+              </p>
+              <p className="text-zinc-700 dark:text-zinc-300">
+                ⛽ Gas used: {txData.gasUsed.toFixed(6)} SUI
+              </p>
+            </div>
+          ) : (
+            <div className="text-zinc-500 dark:text-zinc-400 text-center">
+              Enter a valid digest to view the transaction summary.
+            </div>
+          )}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+        {/* Footer */}
+        <footer className="text-xs text-zinc-500 dark:text-zinc-600">
+          Powered by @mysten/sui.js
+        </footer>
       </main>
     </div>
   );
