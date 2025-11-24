@@ -28,6 +28,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <footer className="h-12 flex items-center justify-center text-center text-sm text-zinc-500 dark:text-zinc-600">
+          Built with ❤️ using Next.js + @mysten/sui.js
+        </footer>
       </body>
     </html>
   );
