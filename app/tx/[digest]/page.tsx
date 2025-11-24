@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { SuiClient } from "@mysten/sui.js/client";
 import { Loader2, AlertCircle, Copy } from "lucide-react";
-
-// ShadCN Components
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Accordion,
@@ -16,15 +14,16 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useSonner, toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const client = new SuiClient({ url: "https://fullnode.mainnet.sui.io:443" });
 
 export default function TxPage() {
-  const { digest } = useParams();
-  const [tx, setTx] = useState<any>(null);
+  const params = useParams();
+  const digest = Array.isArray(params.digest) 
+    ? params.digest[0] 
+    : params.digest || "";
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -32,17 +31,12 @@ export default function TxPage() {
   useEffect(() => {
     async function fetchTx() {
       try {
-        const result = await client.getTransactionBlock({
+        const tx = await client.getTransactionBlock({
           digest,
-          options: {
-            showEffects: true,
-            showInput: true,
-            showEvents: true,
-          },
+          options: { showEffects: true, showInput: true, showEvents: true },
         });
 
-        setTx(result);
-        setSummary(await summarize(result));
+        setSummary(await summarize(tx));
       } catch (err) {
         console.log(err);
         setError("Invalid digest or transaction not found.");
@@ -60,7 +54,6 @@ export default function TxPage() {
       if (!t.MoveCall) continue;
 
       const { package: pkg, module, function: func } = t.MoveCall;
-
       let info;
       try {
         info = await client.getNormalizedMoveModule({ package: pkg, module });
@@ -83,6 +76,7 @@ export default function TxPage() {
   }
 
   async function summarize(tx: any) {
+    const kind = tx.transaction.data.transaction.kind || "";
     const sender = tx.transaction.data.sender;
     const gas = tx.effects.gasUsed.computationCost;
     const created = tx.effects.created?.length || 0;
@@ -90,11 +84,15 @@ export default function TxPage() {
     const transferred = tx.effects.transferObject?.length || 0;
 
     const movesRaw = tx.transaction.data.transaction.transactions;
-    const moves = Array.isArray(movesRaw) ? movesRaw : [movesRaw];
+    let moveCalls: any[] = [];
 
-    const moveCalls = await summarizeMoveCalls(moves);
+    if (movesRaw) {
+      const moves = Array.isArray(movesRaw) ? movesRaw : [movesRaw];
+      moveCalls = await summarizeMoveCalls(moves);
+    }
 
     return {
+      kind,
       sender,
       created,
       mutated,
@@ -109,9 +107,7 @@ export default function TxPage() {
 
   const copyRawJSON = () => {
     navigator.clipboard.writeText(JSON.stringify(summary.raw, null, 2));
-    toast("Copied!", {
-      description: "Raw JSON copied to clipboard.",
-    });
+    toast("Copied!", { description: "Raw JSON copied to clipboard." });
   };
 
   if (loading) {
@@ -124,26 +120,45 @@ export default function TxPage() {
 
   if (error) {
     return (
-      <div className="flex justify-center items-center min-h-[calc(100vh-112px)] text-red-500">
-        <AlertCircle className="mr-2" />
-        {error}
+      <div className="flex justify-center items-center min-h-[calc(100vh-112px)] text-red-500 p-4">
+        <AlertCircle className="mr-2" /> {error}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-112px)] p-10 max-w-screen">
-      <h1 className="text-3xl font-semibold tracking-tight mb-4">
+    <div
+      className="
+      flex flex-col 
+      min-h-[calc(100vh-112px)] 
+      p-4 sm:p-6 md:p-10 
+      w-full max-w-5xl mx-auto
+    "
+    >
+      <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-4 break-all">
         Transaction Details
       </h1>
-      <p className="font-mono text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+
+      <p className="font-mono text-sm text-zinc-500 dark:text-zinc-400 mb-6 break-all">
         Digest: {digest}
       </p>
 
       <Separator className="mb-6" />
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid grid-cols-5 w-full bg-transparent">
+        <TabsList
+          className="
+            w-full
+            overflow-x-auto
+            whitespace-nowrap
+            flex
+            justify-start
+            sm:grid sm:grid-cols-5
+            gap-2 sm:gap-0
+            pb-2 sm:pb-0
+            bg-transparent
+          "
+        >
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="move-calls">Move Calls</TabsTrigger>
           <TabsTrigger value="changes">Changes</TabsTrigger>
@@ -152,11 +167,14 @@ export default function TxPage() {
         </TabsList>
 
         <TabsContent value="overview">
-          <Card>
+          <Card className="w-full">
             <CardHeader>
               <CardTitle>Overview</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-2 text-sm break-all">
+              <p>
+                <b>Kind:</b> {summary.kind}
+              </p>
               <p>
                 <b>Sender:</b> {summary.sender}
               </p>
@@ -169,7 +187,7 @@ export default function TxPage() {
         </TabsContent>
 
         <TabsContent value="move-calls">
-          <Card>
+          <Card className="w-full">
             <CardHeader>
               <CardTitle>Move Calls</CardTitle>
             </CardHeader>
@@ -178,16 +196,16 @@ export default function TxPage() {
                 <p className="text-sm text-zinc-500">No Move calls found.</p>
               )}
 
-              <Accordion type="single" collapsible>
+              <Accordion type="single" collapsible className="w-full">
                 {summary.moveCalls.map((call: any, i: number) => (
                   <AccordionItem key={i} value={`call-${i}`}>
                     <AccordionTrigger>
-                      <span className="font-mono text-blue-500">
+                      <span className="font-mono text-blue-500 break-all">
                         {call.module}::{call.func}
                       </span>
                     </AccordionTrigger>
                     <AccordionContent>
-                      <div className="space-y-1">
+                      <div className="space-y-1 text-sm break-all">
                         <p>
                           <b>Package:</b> {call.pkg}
                         </p>
@@ -219,7 +237,7 @@ export default function TxPage() {
         </TabsContent>
 
         <TabsContent value="changes">
-          <Card>
+          <Card className="w-full">
             <CardHeader>
               <CardTitle>Object Changes</CardTitle>
             </CardHeader>
@@ -238,7 +256,7 @@ export default function TxPage() {
         </TabsContent>
 
         <TabsContent value="events">
-          <Card>
+          <Card className="w-full">
             <CardHeader>
               <CardTitle>Events</CardTitle>
             </CardHeader>
@@ -249,7 +267,13 @@ export default function TxPage() {
               {summary.events.map((ev: any, i: number) => (
                 <pre
                   key={i}
-                  className="bg-zinc-100 dark:bg-zinc-800 p-3 rounded mb-2 text-xs overflow-auto"
+                  className="
+                    bg-zinc-100 dark:bg-zinc-800 
+                    p-3 rounded mb-2 
+                    text-xs 
+                    overflow-x-auto 
+                    break-all
+                  "
                 >
                   {JSON.stringify(ev, null, 2)}
                 </pre>
@@ -259,23 +283,24 @@ export default function TxPage() {
         </TabsContent>
 
         <TabsContent value="raw">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Raw Transaction</CardTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={copyRawJSON}
-                  className="w-fit"
-                >
-                  <Copy />
-                </Button>
-              </div>
+          <Card className="w-full">
+            <CardHeader className="flex justify-between items-center">
+              <CardTitle>Raw Transaction</CardTitle>
+              <Button variant="outline" size="sm" onClick={copyRawJSON}>
+                <Copy className="h-4 w-4" />
+              </Button>
             </CardHeader>
 
             <CardContent>
-              <pre className="text-xs bg-zinc-100 dark:bg-zinc-800 p-4 rounded overflow-auto">
+              <pre
+                className="
+                  text-xs bg-zinc-100 dark:bg-zinc-800 
+                  p-4 rounded 
+                  overflow-x-auto 
+                  wrap-break-words 
+                  max-h-[500px]
+                "
+              >
                 {JSON.stringify(summary.raw, null, 2)}
               </pre>
             </CardContent>

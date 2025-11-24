@@ -4,6 +4,8 @@ import "./globals.css";
 import { ThemeProvider } from "./ThemeProvider";
 import Header from "@/components/Header";
 import { Toaster } from "sonner";
+import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -22,9 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistMono.variable} antialiased`}
-      >
+      <body className={`${geistMono.variable} antialiased break-all`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -34,8 +34,14 @@ export default function RootLayout({
           <div className="min-h-screen bg-background flex flex-col">
             <Header />
             {children}
-            <footer className="h-12 flex items-center justify-center text-center text-sm bg-secondary">
-              Built with ❤️ using Next.js + @mysten/sui.js
+            <footer className="min-h-12 text-xs sm:text-sm bg-secondary py-3 sm:py-0 flex items-center justify-center text-center text-wrap relative">
+              <p>Built with ❤️ using Next.js + @mysten/sui.js</p>
+              <Link href={"https://suiscan.xyz/mainnet/home"}
+                className="hidden md:flex fixed right-10 items-center gap-1 underline"
+                target="_blank"
+              >
+                SuiScan <ExternalLink className="w-3" />
+              </Link>
             </footer>
           </div>
           <Toaster />

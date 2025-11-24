@@ -26,7 +26,7 @@ export default function SearchBox() {
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="flex w-full items-center space-x-2">
+        <div className="flex flex-col sm:flex-row w-full items-center space-x-2 space-y-2 sm:space-y-0">
           <Input
             type="text"
             value={digest}
@@ -59,7 +59,7 @@ export default function SearchBox() {
 
       {error && (
         <div className="mt-4 flex items-center justify-center rounded-lg border border-red-300 
-                        bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-800 
+                        bg-red-50 px-2 sm:px-3 py-2 text-xs sm:text-sm text-red-600 dark:border-red-800 
                         dark:bg-red-950/40 dark:text-red-400">
           <AlertCircle className="mr-2 h-4 w-4" /> {error}
         </div>
