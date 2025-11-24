@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import ThemeToggle from "./ThemeToggle";
+import { cn } from "@/lib/utils";
+import { Input } from "./ui/input";
 
 export default function Header() {
   const [digest, setDigest] = useState("");
   const router = useRouter();
+  const path = usePathname();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -16,18 +20,20 @@ export default function Header() {
   }
 
   return (
-    <div className="flex flex-row-reverse">
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          value={digest}
-          onChange={(e) => setDigest(e.target.value)}
-          placeholder="Enter transaction digest"
-          className="flex-1 max-w-xl min-w-lg rounded-lg border border-zinc-300 bg-white p-3 text-sm 
-                       text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 
-                       dark:text-zinc-100 focus:border-blue-500 focus:outline-none"
-        />
-      </form>
+    <div className={cn("flex flex-row-reverse items-center gap-2 px-4 bg-secondary h-16"
+    )}>
+      <ThemeToggle />
+      {path != "/" && (
+        <form onSubmit={handleSubmit}>
+          <Input
+            type="text"
+            value={digest}
+            onChange={(e) => setDigest(e.target.value)}
+            placeholder="Enter transaction digest"
+            className="flex-1 max-w-xl min-w-lg "
+          />
+        </form>
+      )}
     </div>
   );
 }

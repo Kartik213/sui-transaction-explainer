@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+import { ThemeProvider } from "./ThemeProvider";
+import Header from "@/components/Header";
+import { Toaster } from "sonner";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -25,12 +23,23 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistMono.variable} antialiased`}
       >
-        {children}
-        <footer className="h-12 flex items-center justify-center text-center text-sm text-zinc-500 dark:text-zinc-600">
-          Built with ❤️ using Next.js + @mysten/sui.js
-        </footer>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <div className="min-h-screen bg-background flex flex-col">
+            <Header />
+            {children}
+            <footer className="h-12 flex items-center justify-center text-center text-sm bg-secondary">
+              Built with ❤️ using Next.js + @mysten/sui.js
+            </footer>
+          </div>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1,39 +1,51 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { SuiClient } from "@mysten/sui.js/client";
-import { Loader2, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { SuiClient } from "@mysten/sui.js/client";
+import { Loader2, AlertCircle, Copy } from "lucide-react";
+
+// ShadCN Components
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useSonner, toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 const client = new SuiClient({ url: "https://fullnode.mainnet.sui.io:443" });
 
-interface TxSummary {
-  sender: string;
-  created: number;
-  mutated: number;
-  transferred: number;
-  gasUsed: number;
-  moveCalls: any[];
-}
-
 export default function TxPage() {
-  const { digest } = useParams() || "";
-  const [txData, setTxData] = useState<TxSummary | null>(null);
+  const { digest } = useParams();
+  const [tx, setTx] = useState<any>(null);
+  const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     async function fetchTx() {
       try {
-        const tx = await client.getTransactionBlock({
+        const result = await client.getTransactionBlock({
           digest,
-          options: { showEffects: true, showInput: true, showEvents: true },
+          options: {
+            showEffects: true,
+            showInput: true,
+            showEvents: true,
+          },
         });
 
-        setTxData(await summarize(tx));
+        setTx(result);
+        setSummary(await summarize(result));
       } catch (err) {
-        console.error(err);
-        setError("Transaction not found or invalid digest.");
+        console.log(err);
+        setError("Invalid digest or transaction not found.");
       } finally {
         setLoading(false);
       }
@@ -43,120 +55,233 @@ export default function TxPage() {
   }, [digest]);
 
   async function summarizeMoveCalls(txs: any[]) {
-    const result = [];
-
+    const arr: any[] = [];
     for (const t of txs) {
       if (!t.MoveCall) continue;
 
       const { package: pkg, module, function: func } = t.MoveCall;
 
-      const moduleInfo = await client.getNormalizedMoveModule({
-        package: pkg,
-        module,
-      });
+      let info;
+      try {
+        info = await client.getNormalizedMoveModule({ package: pkg, module });
+      } catch {
+        info = null;
+      }
 
-      result.push({
+      arr.push({
         raw: `${pkg}::${module}::${func}`,
-        package: pkg,
+        pkg,
         module,
-        function: func,
-        visibility: moduleInfo?.exposedFunctions?.[func]?.visibility,
-        isEntry: moduleInfo?.exposedFunctions?.[func]?.isEntry,
-        params: moduleInfo?.exposedFunctions?.[func]?.parameters || [],
-        returns: moduleInfo?.exposedFunctions?.[func]?.return || [],
+        func,
+        visibility: info?.exposedFunctions?.[func]?.visibility,
+        isEntry: info?.exposedFunctions?.[func]?.isEntry,
+        params: info?.exposedFunctions?.[func]?.parameters || [],
+        returns: info?.exposedFunctions?.[func]?.return || [],
       });
     }
-
-    return result;
+    return arr;
   }
 
-  async function summarize(tx: any): Promise<TxSummary> {
+  async function summarize(tx: any) {
     const sender = tx.transaction.data.sender;
-    const gasUsed = tx.effects.gasUsed.computationCost;
+    const gas = tx.effects.gasUsed.computationCost;
     const created = tx.effects.created?.length || 0;
     const mutated = tx.effects.mutated?.length || 0;
     const transferred = tx.effects.transferObject?.length || 0;
 
-    const txs = tx.transaction.data.transaction.transactions;
-    const transactions = Array.isArray(txs) ? txs : [txs];
+    const movesRaw = tx.transaction.data.transaction.transactions;
+    const moves = Array.isArray(movesRaw) ? movesRaw : [movesRaw];
 
-    const moveCalls = await summarizeMoveCalls(transactions);
+    const moveCalls = await summarizeMoveCalls(moves);
 
     return {
       sender,
       created,
       mutated,
       transferred,
-      gasUsed: Number(gasUsed) / 1e9,
+      gas: Number(gas) / 1e9,
       moveCalls,
+      events: tx.events || [],
+      effects: tx.effects,
+      raw: tx,
     };
   }
 
+  const copyRawJSON = () => {
+    navigator.clipboard.writeText(JSON.stringify(summary.raw, null, 2));
+    toast("Copied!", {
+      description: "Raw JSON copied to clipboard.",
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-112px)]">
+        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-112px)] text-red-500">
+        <AlertCircle className="mr-2" />
+        {error}
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center">
-      {/* Loading */}
-      {loading && (
-        <div className="flex items-center justify-center space-x-2">
-          <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-          <p className="text-zinc-600 dark:text-zinc-300">
-            Fetching transaction…
-          </p>
-        </div>
-      )}
+    <div className="flex flex-col min-h-[calc(100vh-112px)] p-10 max-w-screen">
+      <h1 className="text-3xl font-semibold tracking-tight mb-4">
+        Transaction Details
+      </h1>
+      <p className="font-mono text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+        Digest: {digest}
+      </p>
 
-      {/* Error */}
-      {!loading && error && (
-        <div className="rounded-lg border border-red-400 bg-red-100 dark:bg-red-950/40 p-4 flex items-center text-red-700 dark:text-red-300">
-          <AlertCircle className="mr-2 h-5 w-5" />
-          {error}
-        </div>
-      )}
+      <Separator className="mb-6" />
 
-      {/* Data */}
-      {!loading && txData && (
-        <div className="w-full max-w-2xl mt-6 p-6 rounded-xl border border-zinc-200 bg-white dark:bg-zinc-800 dark:border-zinc-700 shadow">
-          <h2 className="text-xl font-bold mb-4">Transaction Summary</h2>
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid grid-cols-5 w-full bg-transparent">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="move-calls">Move Calls</TabsTrigger>
+          <TabsTrigger value="changes">Changes</TabsTrigger>
+          <TabsTrigger value="events">Events</TabsTrigger>
+          <TabsTrigger value="raw">Raw JSON</TabsTrigger>
+        </TabsList>
 
-          <p>
-            <b>Sender:</b> {txData.sender}
-          </p>
-          <p>🪙 Created: {txData.created}</p>
-          <p>🔁 Mutated: {txData.mutated}</p>
-          <p>📦 Transferred: {txData.transferred}</p>
-          <p>⛽ Gas Used: {txData.gasUsed.toFixed(6)} SUI</p>
+        <TabsContent value="overview">
+          <Card>
+            <CardHeader>
+              <CardTitle>Overview</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p>
+                <b>Sender:</b> {summary.sender}
+              </p>
+              <p>🪙 Created: {summary.created}</p>
+              <p>🔁 Mutated: {summary.mutated}</p>
+              <p>📦 Transferred: {summary.transferred}</p>
+              <p>⛽ Gas Used: {summary.gas.toFixed(6)} SUI</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          {txData.moveCalls.length > 0 && (
-            <div className="mt-5">
-              <h3 className="text-md font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
-                {" "}
-                Move Calls{" "}
-              </h3>
-              {txData.moveCalls.map((call: any, i: number) => (
-                <div
+        <TabsContent value="move-calls">
+          <Card>
+            <CardHeader>
+              <CardTitle>Move Calls</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {summary.moveCalls.length === 0 && (
+                <p className="text-sm text-zinc-500">No Move calls found.</p>
+              )}
+
+              <Accordion type="single" collapsible>
+                {summary.moveCalls.map((call: any, i: number) => (
+                  <AccordionItem key={i} value={`call-${i}`}>
+                    <AccordionTrigger>
+                      <span className="font-mono text-blue-500">
+                        {call.module}::{call.func}
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-1">
+                        <p>
+                          <b>Package:</b> {call.pkg}
+                        </p>
+                        <p>
+                          <b>Module:</b> {call.module}
+                        </p>
+                        <p>
+                          <b>Function:</b> {call.func}
+                        </p>
+                        <p>
+                          <b>Visibility:</b> {call.visibility}
+                        </p>
+                        <p>
+                          <b>Entry:</b> {call.isEntry ? "Yes" : "No"}
+                        </p>
+                        <p>
+                          <b>Parameters:</b> {JSON.stringify(call.params)}
+                        </p>
+                        <p>
+                          <b>Returns:</b> {JSON.stringify(call.returns)}
+                        </p>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="changes">
+          <Card>
+            <CardHeader>
+              <CardTitle>Object Changes</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm space-y-2">
+              <p>
+                <b>Created:</b> {summary.created}
+              </p>
+              <p>
+                <b>Mutated:</b> {summary.mutated}
+              </p>
+              <p>
+                <b>Transferred:</b> {summary.transferred}
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="events">
+          <Card>
+            <CardHeader>
+              <CardTitle>Events</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {summary.events.length === 0 && (
+                <p className="text-sm text-zinc-500">No events emitted.</p>
+              )}
+              {summary.events.map((ev: any, i: number) => (
+                <pre
                   key={i}
-                  className="rounded-md bg-zinc-100 dark:bg-zinc-800/80 px-3 py-3 mb-2"
+                  className="bg-zinc-100 dark:bg-zinc-800 p-3 rounded mb-2 text-xs overflow-auto"
                 >
-                  <div className="font-mono text-blue-600 dark:text-blue-400 break-all">
-                    {call.package}
-                  </div>
-                  <div className="font-mono text-blue-600 dark:text-blue-400 break-all">
-                    {call.module}
-                  </div>
-                  <div className="font-mono text-blue-600 dark:text-blue-400 break-all">
-                    {call.function}
-                  </div>
-                  <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                    <b>Visibility:</b> {call.visibility}
-                  </div>
-                  <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                    <b>Entry Function:</b> {call.isEntry ? "Yes" : "No"}
-                  </div>
-                </div>
+                  {JSON.stringify(ev, null, 2)}
+                </pre>
               ))}
-            </div>
-          )}
-        </div>
-      )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="raw">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Raw Transaction</CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyRawJSON}
+                  className="w-fit"
+                >
+                  <Copy />
+                </Button>
+              </div>
+            </CardHeader>
+
+            <CardContent>
+              <pre className="text-xs bg-zinc-100 dark:bg-zinc-800 p-4 rounded overflow-auto">
+                {JSON.stringify(summary.raw, null, 2)}
+              </pre>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, ArrowRight, AlertCircle } from "lucide-react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 
 export default function SearchBox() {
   const [digest, setDigest] = useState("");
@@ -25,23 +27,19 @@ export default function SearchBox() {
     <>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex w-full items-center space-x-2">
-
-          <input
+          <Input
             type="text"
             value={digest}
             onChange={(e) => setDigest(e.target.value)}
             placeholder="Enter transaction digest"
-            className="flex-1 rounded-lg border border-zinc-300 bg-white p-3 text-sm 
-                       text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 
-                       dark:text-zinc-100 focus:border-blue-500 focus:outline-none"
+            className="hover:"
           />
-
-          <button
+          <Button
             type="submit"
             disabled={loading}
-            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-3 
-                       text-sm font-medium text-white transition-colors hover:bg-blue-700 
-                       focus:outline-none disabled:opacity-50"
+            variant={"secondary"}
+            size={"lg"}
+            aria-label="Submit"
           >
             {loading ? (
               <>
@@ -54,7 +52,7 @@ export default function SearchBox() {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </>
             )}
-          </button>
+          </Button>
 
         </div>
       </form>
