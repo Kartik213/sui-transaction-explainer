@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import { Toaster } from "sonner";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
+import { Analytics } from "@vercel/analytics/next"
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -43,6 +44,7 @@ export default function RootLayout({
                 SuiScan <ExternalLink className="w-3" />
               </Link>
             </footer>
+            <Analytics />
           </div>
           <Toaster />
         </ThemeProvider>
