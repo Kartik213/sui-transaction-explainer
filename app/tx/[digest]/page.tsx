@@ -46,7 +46,7 @@ export default function TxPage() {
     }
 
     fetchTx();
-  }, [digest]);
+  }, [digest, summarize]);
 
   async function summarizeMoveCalls(txs: any[]) {
     const arr: any[] = [];
