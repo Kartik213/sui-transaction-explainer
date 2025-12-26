@@ -36,7 +36,7 @@ export default function RootLayout({
             <Header />
             {children}
             <footer className="min-h-12 text-xs sm:text-sm bg-secondary py-3 sm:py-0 flex items-center justify-center text-center text-wrap relative">
-              <p>Built with ❤️ using Next.js + @mysten/sui.js</p>
+              <p>Built with ❤️ using Next.js + @mysten/sui</p>
               <Link href={"https://suiscan.xyz/mainnet/home"}
                 className="hidden md:flex fixed right-10 items-center gap-1 underline"
                 target="_blank"
