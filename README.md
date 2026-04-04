@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 💧 Sui Transaction Explainer
 
-## Getting Started
+A small, user-friendly web app that takes a Sui transaction digest (hash) and explains in plain language what actually happened.
 
-First, run the development server:
+## 🚀 Features
+
+- **Plain Language Summary**: Understand the essence of a transaction without digging through raw JSON.
+- **Move Call Analysis**: Detailed breakdown of Move functions called, including package, module, and visibility.
+- **Object Tracking**: See exactly which objects were created, mutated, or transferred.
+- **Gas Breakdown**: Clear view of computation costs in SUI.
+- **Deep Dive**: Access raw transaction events and the full RPC JSON response for advanced debugging.
+- **Modern UI**: Clean, responsive design with full light/dark mode support.
+
+## Built with
+
+- **Next.js 15 & TS** for the foundation.
+- **Sui SDK** for fetching on-chain data.
+- **Tailwind & shadcn/ui** for the look and feel.
+- **Lucide** for the icons.
+
+## Quick Start
 
 ```bash
+# install
+npm install
+
+# run
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app lives at `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📖 How It Works
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Grab the data**: Uses the Sui SDK to fetch transaction details and effects.
+2. **Normalize**: Hits the RPC to get Move module metadata so we can show more than just addresses.
+3. **Summarize**: Combines all that raw data into a human-readable format.
 
-## Learn More
+*Got a digest? Try it out on Mainnet.*
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+MIT License. Built for the Sui community.
